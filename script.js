@@ -18,15 +18,18 @@
     });
   }
 
-  // Hero slider
+  // Hero slider (respect reduced motion)
   const slides = $$('.hero-slider .slide');
   let slideIdx = 0;
   function rotateSlides(){
     slides.forEach((el,i)=>el.classList.toggle('active', i===slideIdx));
     slideIdx = (slideIdx + 1) % slides.length;
   }
-  if(slides.length){
-    setInterval(rotateSlides, 5000);
+  if(slides.length > 1){
+    const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(!prefersReduced){
+      setInterval(rotateSlides, 5000);
+    }
   }
 
   // Scroll to top button
@@ -72,16 +75,38 @@
   const modal = $('#roomModal');
   const modalContent = $('#roomContent');
   const roomButtons = $$('[data-room-details]');
+  let lastFocusedBeforeModal = null;
+  function getFocusable(container){
+    return $$('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])', container)
+      .filter(el=>!el.hasAttribute('disabled') && el.tabIndex !== -1);
+  }
+  function trapFocus(e){
+    if(e.key !== 'Tab') return;
+    const focusables = getFocusable(modal);
+    if(!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  }
   function openModal(html){
     if(!modal) return;
     modalContent.innerHTML = html;
     modal.hidden = false;
     document.body.style.overflow = 'hidden';
+    lastFocusedBeforeModal = document.activeElement;
+    const toFocus = getFocusable(modal)[0] || modal;
+    toFocus.focus();
+    modal.addEventListener('keydown', trapFocus);
   }
   function closeModal(){
     if(!modal) return;
     modal.hidden = true;
     document.body.style.overflow = '';
+    modal.removeEventListener('keydown', trapFocus);
+    if(lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function'){
+      lastFocusedBeforeModal.focus();
+    }
   }
   roomButtons.forEach(btn => btn.addEventListener('click',()=>{
     const data = JSON.parse(btn.getAttribute('data-room-details'));
@@ -116,6 +141,18 @@
     const scrollBy = () => track.clientWidth * .9;
     prev.addEventListener('click',()=> track.scrollBy({left:-scrollBy(),behavior:'smooth'}));
     next.addEventListener('click',()=> track.scrollBy({left:scrollBy(),behavior:'smooth'}));
+    // Keyboard support for carousel
+    carousel.addEventListener('keydown', (e)=>{
+      if(e.key === 'ArrowLeft'){
+        e.preventDefault();
+        track.scrollBy({left:-scrollBy(),behavior:'smooth'});
+      }
+      if(e.key === 'ArrowRight'){
+        e.preventDefault();
+        track.scrollBy({left:scrollBy(),behavior:'smooth'});
+      }
+    });
+    carousel.tabIndex = 0;
   }
 
   // Availability form simple check
