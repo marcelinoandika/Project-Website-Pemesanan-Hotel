@@ -72,9 +72,12 @@
     <main id="main">
       <section class="hero" aria-label="Sorotan">
         <div class="hero-slider" data-hero>
-          <div class="slide active"><img src="Assets/pexels-pixabay-161758.jpg" alt="Eksterior hotel malam" decoding="async" /></div>
-          <div class="slide"><img src="Assets/pexels-pixabay-258154.jpg" alt="Kota malam" loading="lazy" decoding="async" /></div>
-          <div class="slide"><img src="Assets/pexels-pixabay-271624.jpg" alt="Resort saat senja" loading="lazy" decoding="async" /></div>
+          <div class="slide active">
+            <video class="hero-video" src="Assets/3554219-hd_1920_1080_24fps.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Video suasana hotel 1"></video>
+          </div>
+          <div class="slide">
+            <video class="hero-video" src="Assets/4185240-hd_1920_1080_25fps.mp4" muted loop playsinline preload="metadata" aria-label="Video suasana hotel 2"></video>
+          </div>
         </div>
         <div class="container hero-content">
           <h1>Elegan, Nyaman, dan Tak Terlupakan</h1>
@@ -112,6 +115,8 @@
           <output id="availabilityResult" role="status" aria-live="polite"></output>
         </form>
       </section>
+
+
 
       <section id="about" class="section">
         <div class="container grid-2">
@@ -220,6 +225,8 @@
               <img loading="lazy" decoding="async" src="Assets/pexels-michael-block-1691617-3225531.jpg" alt="Kolam renang hotel malam" />
               <img loading="lazy" decoding="async" src="Assets/pexels-pixabay-271619.jpg" alt="Restoran hotel" />
               <img loading="lazy" decoding="async" src="Assets/pexels-pixabay-277572.jpg" alt="Kamar suite hotel" />
+                <img loading="lazy" decoding="async" src="Assets/pexels-pixabay-260922.jpg" alt="Area lounge hotel" />
+                <img loading="lazy" decoding="async" src="Assets/pexels-pixabay-261102.jpg" alt="Koridor hotel elegan" />
             </div>
             <button class="car-btn next" aria-label="Berikutnya">❯</button>
           </div>
@@ -347,6 +354,8 @@
       </div>
     </div>
 
+    <button class="audio-toggle" id="audioToggle" aria-pressed="true" aria-label="Putar musik latar">⏸</button>
+    <audio id="bgm" src="Assets/Good Days.mp3" preload="auto" loop autoplay></audio>
     <script src="script.js" defer></script>
   </body>
   </html>

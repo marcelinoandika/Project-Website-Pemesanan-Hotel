@@ -18,17 +18,29 @@
     });
   }
 
-  // Hero slider (respect reduced motion)
+  // Hero slider (respect reduced motion) + play/pause video on active
   const slides = $$('.hero-slider .slide');
   let slideIdx = 0;
+  function applyActive(){
+    slides.forEach((el,i)=>{
+      const isActive = i===slideIdx;
+      el.classList.toggle('active', isActive);
+      const vid = el.querySelector('video');
+      if(vid){
+        if(isActive){ vid.play().catch(()=>{}); }
+        else { try{ vid.pause(); vid.currentTime = 0; }catch(e){} }
+      }
+    });
+  }
   function rotateSlides(){
-    slides.forEach((el,i)=>el.classList.toggle('active', i===slideIdx));
+    applyActive();
     slideIdx = (slideIdx + 1) % slides.length;
   }
+  if(slides.length){ applyActive(); }
   if(slides.length > 1){
     const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if(!prefersReduced){
-      setInterval(rotateSlides, 5000);
+      setInterval(rotateSlides, 7000);
     }
   }
 
@@ -138,10 +150,20 @@
     const track = $('.car-track', carousel);
     const prev = $('.car-btn.prev', carousel);
     const next = $('.car-btn.next', carousel);
+    const items = Array.from(track.querySelectorAll('img'));
     const scrollBy = () => track.clientWidth * .9;
+
+    function scrollToIndex(idx){
+      const el = items[Math.max(0, Math.min(items.length - 1, idx))];
+      if(!el) return;
+      el.scrollIntoView({behavior:'smooth', inline:'start', block:'nearest'});
+    }
+
+    // Buttons
     prev.addEventListener('click',()=> track.scrollBy({left:-scrollBy(),behavior:'smooth'}));
     next.addEventListener('click',()=> track.scrollBy({left:scrollBy(),behavior:'smooth'}));
-    // Keyboard support for carousel
+
+    // Keyboard
     carousel.addEventListener('keydown', (e)=>{
       if(e.key === 'ArrowLeft'){
         e.preventDefault();
@@ -153,6 +175,80 @@
       }
     });
     carousel.tabIndex = 0;
+
+    // Drag / swipe with snapping
+    let isDown = false; let startX = 0; let startScroll = 0; let hasMoved = false;
+    function onPointerDown(e){
+      isDown = true; hasMoved = false;
+      startX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+      startScroll = track.scrollLeft;
+      track.setPointerCapture && track.setPointerCapture(e.pointerId || 0);
+    }
+    function onPointerMove(e){
+      if(!isDown) return;
+      const x = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+      const dx = x - startX;
+      if(Math.abs(dx) > 2) hasMoved = true;
+      track.scrollLeft = startScroll - dx;
+    }
+    function nearestIndex(){
+      // compute nearest item by left offset vs current scroll
+      const left = track.scrollLeft;
+      let bestIdx = 0; let bestDist = Infinity;
+      items.forEach((el, i)=>{
+        const dist = Math.abs(el.offsetLeft - left);
+        if(dist < bestDist){ bestDist = dist; bestIdx = i; }
+      });
+      return bestIdx;
+    }
+    function onPointerUp(){
+      if(!isDown) return;
+      isDown = false;
+      if(hasMoved){ scrollToIndex(nearestIndex()); }
+    }
+    track.addEventListener('pointerdown', onPointerDown);
+    track.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    // Touch fallback (older browsers)
+    track.addEventListener('touchstart', onPointerDown, {passive:true});
+    track.addEventListener('touchmove', onPointerMove, {passive:true});
+    track.addEventListener('touchend', onPointerUp);
+
+    // Dots
+    const dotsWrap = document.createElement('div');
+    dotsWrap.className = 'car-dots';
+    dotsWrap.setAttribute('role','tablist');
+    let activeDot = 0;
+    const dots = items.map((_,i)=>{
+      const d = document.createElement('button');
+      d.className = 'car-dot';
+      d.type = 'button';
+      d.setAttribute('role','tab');
+      d.setAttribute('aria-label', `Slide ${i+1}`);
+      d.setAttribute('aria-selected', i===0 ? 'true' : 'false');
+      d.addEventListener('click',()=> scrollToIndex(i));
+      dotsWrap.appendChild(d);
+      return d;
+    });
+    carousel.appendChild(dotsWrap);
+
+    function updateDots(){
+      // choose center-most visible item
+      const center = track.scrollLeft + track.clientWidth/2;
+      let bestIdx = 0; let bestDist = Infinity;
+      items.forEach((el,i)=>{
+        const elCenter = el.offsetLeft + el.clientWidth/2;
+        const dist = Math.abs(elCenter - center);
+        if(dist < bestDist){ bestDist = dist; bestIdx = i; }
+      });
+      if(bestIdx !== activeDot){
+        dots[activeDot]?.setAttribute('aria-selected','false');
+        dots[bestIdx]?.setAttribute('aria-selected','true');
+        activeDot = bestIdx;
+      }
+    }
+    track.addEventListener('scroll', ()=>{ requestAnimationFrame(updateDots); });
+    updateDots();
   }
 
   // Availability form simple check
@@ -244,6 +340,49 @@
       bookingForm.reset();
       updateTotal();
     });
+  }
+
+  // Featured videos: smooth reveal + play/pause on view
+  const videoCards = Array.from(document.querySelectorAll('[data-video]'));
+  if(videoCards.length){
+    // Pastikan video langsung diputar
+    videoCards.forEach(fig=>{
+      const vid = fig.querySelector('video');
+      fig.classList.add('playing');
+      if(vid){ vid.play().catch(()=>{}); }
+    });
+  }
+
+  // Background music toggle (requires user gesture)
+  const bgm = document.getElementById('bgm');
+  const audioToggle = document.getElementById('audioToggle');
+  if(bgm && audioToggle){
+    const key = 'bgmEnabled';
+    function setPressed(on){
+      audioToggle.setAttribute('aria-pressed', String(on));
+      audioToggle.textContent = on ? '⏸' : '♫';
+    }
+    async function enableAudio(){
+      try{ await bgm.play(); localStorage.setItem(key,'1'); setPressed(true); }
+      catch{ /* jika diblokir, akan dicoba ulang pada interaksi pertama */ }
+    }
+    function disableAudio(){ bgm.pause(); localStorage.setItem(key,'0'); setPressed(false); }
+
+    // Default: coba autoplay sesuai permintaan
+    const enabledPref = localStorage.getItem(key);
+    const enabled = enabledPref ? enabledPref === '1' : true;
+    setPressed(enabled);
+    if(enabled){ enableAudio(); }
+
+    audioToggle.addEventListener('click',()=>{
+      const on = audioToggle.getAttribute('aria-pressed') === 'true';
+      if(on){ disableAudio(); } else { enableAudio(); }
+    });
+
+    // Fallback: jika autoplay diblokir, mainkan pada interaksi pertama pengguna
+    let triedOnce = false;
+    function tryOnce(){ if(!triedOnce){ triedOnce = true; if(audioToggle.getAttribute('aria-pressed')==='true'){ enableAudio(); } } }
+    ['pointerdown','keydown','touchstart','scroll'].forEach(ev=> document.addEventListener(ev, tryOnce, { once:true, passive:true }));
   }
 })();
 
