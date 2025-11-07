@@ -93,7 +93,4 @@ Project-Website-Pemesanan-Hotel/
 - Safari (latest)
 - Edge (latest)
 
-## 📄 License
-
-MIT
 
